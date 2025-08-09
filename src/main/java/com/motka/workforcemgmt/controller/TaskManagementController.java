@@ -57,10 +57,11 @@ public class TaskManagementController {
 
     // Feature 3
     @PostMapping("/task/comment")
-    public ResponseEntity<String> addComment(@RequestBody TaskCommentRequest request) {
+    public Response<TaskManagementDto> addComment(@RequestBody TaskCommentRequest request) {
         taskHistoryService.addComment(request.getTaskId(), request.getUserId(), request.getComment());
         taskHistoryService.logActivity(request.getTaskId(), "User " + request.getUserId() + " commented: " + request.getComment());
-        return ResponseEntity.ok("Comment added successfully");
+        return new Response<>(taskManagementService.getTaskById(request.getTaskId()));
     }
+
 
 }

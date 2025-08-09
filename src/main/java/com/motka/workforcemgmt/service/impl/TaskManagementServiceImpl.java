@@ -1,13 +1,17 @@
 package com.motka.workforcemgmt.service.impl;
 
 import com.motka.workforcemgmt.common.exception.ResourceNotFoundException;
+import com.motka.workforcemgmt.common.model.TaskActivity;
+import com.motka.workforcemgmt.common.model.TaskComment;
 import com.motka.workforcemgmt.dto.*;
 import com.motka.workforcemgmt.mapper.ITaskManagementMapper;
 import com.motka.workforcemgmt.common.model.TaskManagement;
 import com.motka.workforcemgmt.common.model.enums.Task;
 import com.motka.workforcemgmt.common.model.enums.TaskStatus;
+import com.motka.workforcemgmt.repository.TaskHistoryRepository;
 import com.motka.workforcemgmt.repository.TaskRepository;
 import com.motka.workforcemgmt.service.TaskManagementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.motka.workforcemgmt.dto.TaskCommentDto;
 import com.motka.workforcemgmt.dto.TaskActivityDto;
@@ -169,20 +173,63 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     // feture - 3
+    @Override
+    public TaskManagementDto getTaskById(Long taskId) {
+        TaskManagement task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
+        TaskManagementDto dto = taskMapper.modelToDto(task);
+
+        // Fetch comments and activities from repository
+        List<TaskComment> commentList = taskHistoryRepository.getCommentsByTaskId(taskId);
+        List<String> comments = commentList.stream()
+                .map(c -> "User " + c.getUserId() + " commented: " + c.getComment())
+                .collect(Collectors.toList());
+        dto.setComments(comments);
+
+        List<TaskActivity> activityList = taskHistoryRepository.getActivitiesByTaskId(taskId);
+        List<String> activities = activityList.stream()
+                .map(TaskActivity::getActivity)
+                .collect(Collectors.toList());
+        dto.setActivities(activities);
+
+        return dto;
+    }
+
+
 
     private final Map<Long, List<String>> comments = new HashMap<>();
     private final Map<Long, List<String>> activities = new HashMap<>();
+
+    @Autowired
+    private TaskHistoryRepository taskHistoryRepository;
 
     @Override
     public void addComment(Long taskId, Long userId, String comment) {
         String fullComment = "User " + userId + " commented: " + comment;
         comments.computeIfAbsent(taskId, k -> new ArrayList<>()).add(fullComment);
-    }
 
+        // Add comment to repository storage as well
+        TaskComment taskComment = new TaskComment();
+        taskComment.setTaskId(taskId);
+        taskComment.setUserId(userId);
+        taskComment.setComment(comment);
+        taskComment.setTimestamp(System.currentTimeMillis());
+
+        taskHistoryRepository.addComment(taskComment);
+    }
     @Override
     public void logActivity(Long taskId, String activity) {
         activities.computeIfAbsent(taskId, k -> new ArrayList<>()).add(activity);
+
+        // Also add to repository
+        TaskActivity taskActivity = new TaskActivity();
+        taskActivity.setTaskId(taskId);
+        taskActivity.setActivity(activity);
+        taskActivity.setTimestamp(System.currentTimeMillis());
+
+        taskHistoryRepository.addActivity(taskActivity);
     }
+
 
 
 

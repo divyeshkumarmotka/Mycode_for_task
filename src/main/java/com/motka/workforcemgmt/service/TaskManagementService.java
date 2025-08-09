@@ -12,6 +12,7 @@ public interface TaskManagementService {
     TaskManagementDto findTaskById(Long id);
     TaskManagementDto updateTaskPriority(UpdateTaskPriorityRequest request);
 
+    TaskManagementDto getTaskById(Long taskId);
     void addComment(Long taskId, Long userId, String comment);
     void logActivity(Long taskId, String activity);
 
